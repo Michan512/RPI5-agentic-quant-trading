@@ -1,0 +1,7 @@
+pandas
+numpy
+torch
+yfinance
+alpaca-py
+scikit-learn
+python-dotenv
