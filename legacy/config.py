@@ -7,7 +7,7 @@ from pathlib import Path
 
 # ── Project paths ──────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = PROJECT_ROOT.parent / "research" / "data" / "raw"  # CSVs moved here in Stage E Step 3
 MODELS_DIR = PROJECT_ROOT / "models"
 MODEL_SAVE_PATH = MODELS_DIR / "trading_model.pt"
 

@@ -1,0 +1,154 @@
+{
+  "buy_hold_index": {
+    "params": {
+      "asset": "broad_index"
+    },
+    "periods": {
+      "research": {
+        "start": "2007-01-03",
+        "end": "2019-12-31",
+        "years": 12.99,
+        "cagr": 0.08736200948767348,
+        "total_return": 1.9685226230710784,
+        "ann_vol": 0.192918936306512,
+        "sharpe_rf0": 0.5309802892379186,
+        "max_drawdown": -0.5518945345025814,
+        "turnover_one_way_per_year": 0.03846480309917317,
+        "cost_drag_per_year": 3.1059200141608665e-05,
+        "avg_invested": 0.9996943765281173,
+        "n_trades": 1,
+        "excess_cagr_vs_buy_hold": 0.0
+      },
+      "validation": {
+        "start": "2020-01-02",
+        "end": "2023-12-29",
+        "years": 3.99,
+        "cagr": 0.12063927880437308,
+        "total_return": 0.5751490004165984,
+        "ann_vol": 0.22623803108116344,
+        "sharpe_rf0": 0.6173253865099355,
+        "max_drawdown": -0.3371726551549342,
+        "turnover_one_way_per_year": 0.12526801009305194,
+        "cost_drag_per_year": 0.00011812185598353084,
+        "avg_invested": 0.9990059642147118,
+        "n_trades": 1,
+        "excess_cagr_vs_buy_hold": 0.0
+      }
+    }
+  },
+  "momentum_12_1": {
+    "params": {
+      "top_n": 5,
+      "lookback_days": 252,
+      "skip_days": 21
+    },
+    "periods": {
+      "research": {
+        "start": "2007-01-03",
+        "end": "2019-12-31",
+        "years": 12.99,
+        "cagr": 0.25249485084557977,
+        "total_return": 17.630191821093664,
+        "ann_vol": 0.25334969920794803,
+        "sharpe_rf0": 1.016559137607638,
+        "max_drawdown": -0.5022201219875648,
+        "turnover_one_way_per_year": 2.60908658053147,
+        "cost_drag_per_year": 0.0029014440960674955,
+        "avg_invested": 0.9938875305623472,
+        "n_trades": 926,
+        "excess_cagr_vs_buy_hold": 0.1651328413579063
+      },
+      "validation": {
+        "start": "2020-01-02",
+        "end": "2023-12-29",
+        "years": 3.99,
+        "cagr": 0.3229804237706595,
+        "total_return": 2.0540946436070224,
+        "ann_vol": 0.3161835285851036,
+        "sharpe_rf0": 1.044770286718449,
+        "max_drawdown": -0.35640548488969626,
+        "turnover_one_way_per_year": 2.7930659838357914,
+        "cost_drag_per_year": 0.003369093827545132,
+        "avg_invested": 0.9990059642147118,
+        "n_trades": 288,
+        "excess_cagr_vs_buy_hold": 0.2023411449662864
+      }
+    }
+  },
+  "trend_sma200": {
+    "params": {
+      "sma_days": 200,
+      "off_asset": "short_bond"
+    },
+    "periods": {
+      "research": {
+        "start": "2007-01-03",
+        "end": "2019-12-31",
+        "years": 12.99,
+        "cagr": 0.0883300934629907,
+        "total_return": 2.00304055844713,
+        "ann_vol": 0.12433969841551071,
+        "sharpe_rf0": 0.7437874810575446,
+        "max_drawdown": -0.2244140587955339,
+        "turnover_one_way_per_year": 1.2693385022727144,
+        "cost_drag_per_year": 0.0016381387264292108,
+        "avg_invested": 0.9996943765281173,
+        "n_trades": 35,
+        "excess_cagr_vs_buy_hold": 0.0009680839753172243
+      },
+      "validation": {
+        "start": "2020-01-02",
+        "end": "2023-12-29",
+        "years": 3.99,
+        "cagr": 0.06170202408917591,
+        "total_return": 0.2697722038056165,
+        "ann_vol": 0.13445847491756804,
+        "sharpe_rf0": 0.5129608185875397,
+        "max_drawdown": -0.27790315589284853,
+        "turnover_one_way_per_year": 2.6306282119540905,
+        "cost_drag_per_year": 0.003048999797404479,
+        "avg_invested": 0.9990059642147118,
+        "n_trades": 24,
+        "excess_cagr_vs_buy_hold": -0.058937254715197174
+      }
+    }
+  },
+  "low_vol_252": {
+    "params": {
+      "top_n": 5,
+      "lookback_days": 252
+    },
+    "periods": {
+      "research": {
+        "start": "2007-01-03",
+        "end": "2019-12-31",
+        "years": 12.99,
+        "cagr": 0.08199395222895522,
+        "total_return": 1.7836735306154763,
+        "ann_vol": 0.15922706897826944,
+        "sharpe_rf0": 0.5748621844296623,
+        "max_drawdown": -0.39304128848062414,
+        "turnover_one_way_per_year": 0.9333384542034333,
+        "cost_drag_per_year": 0.001253471196862471,
+        "avg_invested": 0.9938875305623472,
+        "n_trades": 823,
+        "excess_cagr_vs_buy_hold": -0.005368057258718251
+      },
+      "validation": {
+        "start": "2020-01-02",
+        "end": "2023-12-29",
+        "years": 3.99,
+        "cagr": 0.1305903992804882,
+        "total_return": 0.6316890725943887,
+        "ann_vol": 0.1951411651804159,
+        "sharpe_rf0": 0.7268066698192996,
+        "max_drawdown": -0.24048100544101214,
+        "turnover_one_way_per_year": 0.9427032539572999,
+        "cost_drag_per_year": 0.0010739242098858543,
+        "avg_invested": 0.9990059642147118,
+        "n_trades": 253,
+        "excess_cagr_vs_buy_hold": 0.009951120476115127
+      }
+    }
+  }
+}

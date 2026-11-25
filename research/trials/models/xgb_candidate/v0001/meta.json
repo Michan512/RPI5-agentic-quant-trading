@@ -1,0 +1,31 @@
+{
+  "model": "xgb_candidate",
+  "version": "v0001",
+  "status": "candidate",
+  "created_utc": "2026-11-25T03:12:08+00:00",
+  "model_sha256": "238bbf24cf0230de22ade2f61f1a1fa7435c8e0313583e27d3c49263543f764a",
+  "trained_through": "2023-12-31",
+  "train_rows": 77760,
+  "strategy_params": {
+    "horizon_days": 5,
+    "top_n": 5,
+    "min_prob": 0.5,
+    "retrain": "yearly, expanding window",
+    "min_train_years": 3,
+    "label": "open(T+1)->open(T+1+5) beats cross-sectional median",
+    "xgb": {
+      "n_estimators": 300,
+      "max_depth": 5,
+      "learning_rate": 0.05,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "min_child_weight": 5,
+      "reg_alpha": 0.1,
+      "reg_lambda": 1.0,
+      "eval_metric": "logloss",
+      "tree_method": "hist",
+      "random_state": 0
+    }
+  },
+  "note": "Candidate only. Not evaluated on holdout. Never used automatically."
+}

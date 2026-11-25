@@ -8,7 +8,8 @@ secrets/
 
 # --- Generated data and models ---
 data/*.csv
-research/data/raw/
+research/data/raw/*
+!research/data/raw/.gitkeep
 research/data/cache/
 *.parquet
 *.h5
@@ -17,6 +18,8 @@ models/*.json
 models/*.pkl
 models/*.ubj
 !models/.gitkeep
+legacy/models/*
+!legacy/models/.gitkeep
 
 # --- Trading records (your real positions and balances) ---
 *.db
@@ -52,3 +55,8 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+legacy/data/
+
+# --- Versioned model files (metadata is committed, binaries are not) ---
+research/trials/models/**/model.json
+research/data/cache/
