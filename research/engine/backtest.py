@@ -37,7 +37,8 @@ class BacktestResult:
 
 
 def run_backtest(strategy: Strategy, panel: dict[str, pd.DataFrame],
-                 start, end) -> BacktestResult:
+                 start, end, cost_multiplier: float = 1.0) -> BacktestResult:
+    """cost_multiplier is only for the promotion gate's stress test (e.g. doubled costs)."""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     all_dates = panel["close"].index
     dates = all_dates[(all_dates >= start) & (all_dates <= end)]
@@ -50,7 +51,7 @@ def run_backtest(strategy: Strategy, panel: dict[str, pd.DataFrame],
     # Last known close, for valuing a holding on a day it has no bar.
     closes_ff = panel["close"].ffill().loc[dates]
 
-    cost_rate = (S.FEE_BPS + S.SLIPPAGE_BPS) / 1e4
+    cost_rate = (S.FEE_BPS + S.SLIPPAGE_BPS) / 1e4 * cost_multiplier
     cash = S.INITIAL_CASH
     shares = pd.Series(0.0, index=symbols)
     pending: pd.Series | None = None

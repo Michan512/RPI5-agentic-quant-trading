@@ -6,7 +6,7 @@ import pandas as pd
 
 from research.data.loader import load_panel
 from research.engine.lookahead import check_no_lookahead
-from research.strategies import BENCHMARKS
+from research.strategies import BENCHMARKS, ETF_ROUND1
 from research.strategies.xgb_candidate import XGBCandidate
 from shared.strategy import Strategy
 
@@ -28,6 +28,11 @@ class LookAhead(unittest.TestCase):
 
     def test_benchmarks(self):
         for name, cls in BENCHMARKS.items():
+            with self.subTest(strategy=name):
+                self.assertEqual(check_no_lookahead(cls, self.panel, DATES), [])
+
+    def test_etf_round1(self):
+        for name, cls in ETF_ROUND1.items():
             with self.subTest(strategy=name):
                 self.assertEqual(check_no_lookahead(cls, self.panel, DATES), [])
 

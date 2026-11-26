@@ -21,12 +21,28 @@ STOCKS: tuple[str, ...] = (
     "MA", "BAC", "DIS", "NFLX",
 )
 
-# ETFs, looked up by role so strategies never hard-code tickers.
+# Broad asset-class ETFs, looked up by role so strategies never hard-code tickers.
+# All have traded continuously since 2006 or earlier, so this part of the universe
+# has no survivorship bias. Added 2026-11-26 (owner approved). May be held up to 100%.
 ETF_ROLES: dict[str, str] = {
-    "broad_index": "SPY",       # S&P 500 ETF: buy-and-hold and trend benchmarks
-    "short_bond": "SHY",        # 1-3 year US Treasury ETF: trend strategy's "off" asset
+    "broad_index": "SPY",       # US large caps (S&P 500)
+    "intl_developed": "EFA",    # developed markets outside North America
+    "emerging": "EEM",          # emerging markets
+    "mid_bond": "IEF",          # 7-10 year US Treasuries
+    "long_bond": "TLT",         # 20+ year US Treasuries
+    "short_bond": "SHY",        # 1-3 year US Treasuries (the "safe" asset)
+    "gold": "GLD",
+    "real_estate": "VNQ",       # US REITs
+    "commodities": "DBC",       # broad commodity futures
 }
-ETFS: tuple[str, ...] = tuple(ETF_ROLES.values())
+
+# US sector ETFs (Select Sector SPDRs, all since 1998). One sector is a concentrated
+# bet, so each is capped like a single stock (owner decision 2026-11-26).
+SECTOR_ETFS: tuple[str, ...] = (
+    "XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLB", "XLU",
+)
+
+ETFS: tuple[str, ...] = tuple(ETF_ROLES.values()) + SECTOR_ETFS
 
 # Tradable = stocks + ETFs.
 TRADABLE: tuple[str, ...] = STOCKS + ETFS
@@ -37,8 +53,9 @@ REFERENCE: tuple[str, ...] = ("^VIX",)
 ALL_SYMBOLS: tuple[str, ...] = TRADABLE + REFERENCE
 
 SURVIVORSHIP_NOTE = (
-    "Survivorship bias: universe is 19 of today's large-cap winners picked in 2026; "
-    "free data has no delisted stocks, so stock-picking results are biased upwards."
+    "Survivorship bias: the 19 single stocks are today's large-cap winners picked in 2026 "
+    "(free data has no delisted stocks), so stock-picking results are biased upwards. "
+    "The ETF part of the universe has traded continuously since 2006 and is not affected."
 )
 
 
@@ -49,3 +66,12 @@ def etf(role: str) -> str:
 
 def is_stock(ticker: str) -> bool:
     return ticker in STOCKS
+
+
+def is_sector_etf(ticker: str) -> bool:
+    return ticker in SECTOR_ETFS
+
+
+def etfs(*roles: str) -> list[str]:
+    """Tickers for several roles, in order."""
+    return [ETF_ROLES[r] for r in roles]

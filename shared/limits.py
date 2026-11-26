@@ -14,5 +14,9 @@ MAX_WEIGHT_STOCK = 0.25     # proposal: "25% maximum per stock"
 # So broad ETFs listed in shared/universe.py may be held up to 100%.
 MAX_WEIGHT_ETF = 1.0
 
+# Sector ETFs (shared/universe.SECTOR_ETFS) are a concentrated bet: capped like a stock
+# (owner decision 2026-11-26).
+MAX_WEIGHT_SECTOR_ETF = 0.25
+
 # Floating-point tolerance used when checking the limits.
 TOLERANCE = 1e-9

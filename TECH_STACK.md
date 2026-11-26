@@ -114,6 +114,21 @@ Status: Stage E's research side is complete. The live (Pi) side is built and tes
 - **Daily reconciliation:** fills are pulled from the broker and stored, and positions rebuilt from the ledger are compared with the broker's every day. A six-month replay stays matched every day.
 - **Alerts:** Telegram messages for anything unusual, plus a weekly report. If an alert fails to send, it's logged and never stops a trading run.
 
+**11. Promotion gate 1 (`research/gates/`): the final exam.**
+- **The only code that may open the holdout.** Each exact strategy version (a hash of its code and settings) gets **one attempt**, and every attempt is logged, so you can't keep tweaking until it passes.
+- **Ten fixed checks:**
+  - beats buy-and-hold and the 5% bank rate after costs
+  - stock pickers must also beat equal-weight of the same stocks
+  - deflated Sharpe ratio ≥ 95%
+  - look-ahead test
+  - no ticker names in the code
+  - turnover ≤ 300%/yr
+  - drawdown no deeper than buy-and-hold's
+  - no single stock above 30%
+  - still wins with doubled costs and with shifted start dates
+- **Deflated Sharpe ratio, in one sentence:** if you try 100 ideas, the best will look good by luck. The DSR asks how likely it is that this strategy beats the *luckiest of N worthless strategies*, allowing for fat tails. More trials means a higher bar. It's written with only Python's standard library.
+- **Tested on synthetic markets,** so the real holdout stays sealed until a genuine candidate exists.
+
 ---
 
 ## Results, and what they taught
@@ -136,6 +151,8 @@ Annual return after costs. Research = 2007–2019, validation = 2020–2023. The
 - So the honest yardstick for stock picking is **equal-weight of the same stocks**, not SPY.
 - Against that yardstick, the XGBoost model shows **no edge**: +1.2 points in research, −1.2 in validation, with lower risk-adjusted returns. It also trades the whole portfolio almost every week, which costs about 3% a year.
 - Momentum beats equal-weight on paper, but it concentrates in the biggest winners from a hindsight-picked list, so it's the result most inflated by the bias.
+
+**ETF round 1 (published rules on bias-free ETFs):** Faber's asset-class trend, Antonacci's dual momentum, sector momentum and a combination of the three. They cut the worst fall from −55% (SPY) to −14% to −23%, but none beat a plain 60/40 portfolio on returns in both periods, so none earned a holdout attempt. The decision rule was written down *before* the results, and the rules weren't re-tuned afterwards.
 
 **The system worked as intended.** It turned an impressive-looking model into an honest "no edge", before any money was involved.
 
@@ -188,5 +205,5 @@ An LLM can hallucinate or be prompted into doing something odd. Here, AI writes 
 ## Roadmap
 
 1. **Stage E, live side:** the code is done (engine, risk layer, SQLite ledger, broker adapter). The deploy kit is also done: timers, alerts, watchdog, reconciliation and the update channel. Still to do: follow `deploy/README.md` on the Pi, then 4 weeks of unattended paper trading.
-2. **Stage D:** my own research with AI coding help, and the first promotion gate (holdout check with a trial-count penalty).
+2. **Stage D:** promotion gate 1 is built; next comes my own research with AI coding help, judged by that gate. A mistakes log (`research/MISTAKES.md`) is kept as the future reviewer-agent checklist.
 3. **Stage B:** an autonomous research agent, with independent reviewer agents and the same fixed gates.

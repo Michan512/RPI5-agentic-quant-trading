@@ -18,6 +18,14 @@ class ValidateWeights(unittest.TestCase):
     def test_etf_may_be_100pct(self):
         validate_weights(pd.Series({"SPY": 1.0}))
 
+    def test_sector_etf_capped_like_a_stock(self):
+        validate_weights(pd.Series({"XLK": 0.25, "XLF": 0.25, "SHY": 0.5}))
+        with self.assertRaises(InvalidWeights):
+            validate_weights(pd.Series({"XLK": 0.30}))
+
+    def test_asset_class_etf_may_be_100pct(self):
+        validate_weights(pd.Series({"GLD": 1.0}))
+
     def test_sum_above_one(self):
         with self.assertRaises(InvalidWeights):
             validate_weights(pd.Series({"SPY": 0.9, "AAPL": 0.2}))

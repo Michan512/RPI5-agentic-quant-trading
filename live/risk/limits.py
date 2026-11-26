@@ -11,11 +11,13 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class RiskLimits:
     # Max share of the portfolio changed per rebalance (one-way: sum|target - current| / 2).
+    # Moving out of cash is deliberately NOT exempt, so fresh cash is invested over ~2 days
+    # (confirmed by the owner 2026-11-26).
     turnover_cap: float = 0.30
     # No new orders on a day the portfolio fell this much versus the previous run.
     daily_loss_halt: float = 0.03
     # Pause all trading (manual resume) at this fall from the equity peak.
-    # Proposal says 15-20%; the stricter end is used. FLAGGED for owner confirmation.
+    # Proposal says 15-20%; the stricter end, confirmed by the owner 2026-11-26.
     drawdown_pause: float = 0.15
     # Hard stop: equity + withdrawals - deposits <= -hard_stop_loss -> sell all, disable.
     hard_stop_loss: float = 5_000.0

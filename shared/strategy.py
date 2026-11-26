@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 
 from shared import limits
-from shared.universe import TRADABLE, is_stock
+from shared.universe import TRADABLE, is_sector_etf, is_stock
 
 
 class PriceView:
@@ -82,7 +82,12 @@ def validate_weights(weights: pd.Series) -> pd.Series:
     if limits.LONG_ONLY and (w < -tol).any():
         raise InvalidWeights(f"negative weights: {w[w < 0].to_dict()}")
     for t, x in w.items():
-        cap = limits.MAX_WEIGHT_STOCK if is_stock(t) else limits.MAX_WEIGHT_ETF
+        if is_stock(t):
+            cap = limits.MAX_WEIGHT_STOCK
+        elif is_sector_etf(t):
+            cap = limits.MAX_WEIGHT_SECTOR_ETF
+        else:
+            cap = limits.MAX_WEIGHT_ETF
         if x > cap + tol:
             raise InvalidWeights(f"{t} weight {x:.4f} exceeds cap {cap}")
     if w.sum() > limits.MAX_TOTAL_WEIGHT + tol:

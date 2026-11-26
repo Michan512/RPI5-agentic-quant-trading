@@ -95,7 +95,7 @@ systemctl list-timers 'trading-*'
 | `trading-weekly` | Sat 10:00 | Weekly report to Telegram |
 | `trading-update` | Sun 12:00 | Pull the newest `live-v*` tag, test it in a separate copy, switch only if all tests pass |
 
-The engine skips market holidays by itself. If the Pi was off at 16:45, it catches up when it boots, unless the market is open at that point.
+The first $5,000 is invested over two trading days, not one: the 30% turnover cap applies to fresh cash too, by design. The engine skips market holidays by itself. If the Pi was off at 16:45, it catches up when it boots, unless the market is open at that point.
 
 ## 6. Clean up the old setup (do this the same day)
 
