@@ -8,21 +8,25 @@ Costs: 1 bp fee + 5 bp slippage per side. Signals at the close, fills at the nex
 
 ## Research (2007-01-01 to 2019-12-31)
 
-| Strategy | CAGR after costs | vs buy-and-hold | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| buy_hold_index | +8.7% | +0.0% | -55.2% | 19.3% | 0.53 | 4% | 0.00% |
-| momentum_12_1 | +25.2% | +16.5% | -50.2% | 25.3% | 1.02 | 261% | 0.29% |
-| trend_sma200 | +8.8% | +0.1% | -22.4% | 12.4% | 0.74 | 127% | 0.16% |
-| low_vol_252 | +8.2% | -0.5% | -39.3% | 15.9% | 0.57 | 93% | 0.13% |
+| Strategy | CAGR after costs | vs buy-and-hold | vs equal-weight | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| buy_hold_index | +8.7% | +0.0% | -13.0% | -55.2% | 19.3% | 0.53 | 4% | 0.00% |
+| momentum_12_1 | +25.2% | +16.5% | +3.5% | -50.2% | 25.3% | 1.02 | 261% | 0.29% |
+| trend_sma200 | +8.8% | +0.1% | -12.9% | -22.4% | 12.4% | 0.74 | 127% | 0.16% |
+| low_vol_252 | +8.2% | -0.5% | -13.5% | -39.3% | 15.9% | 0.57 | 93% | 0.13% |
+| equal_weight_universe | +21.7% | +13.0% | +0.0% | -45.1% | 21.3% | 1.03 | 36% | 0.03% |
 
 ## Validation (2020-01-01 to 2023-12-31)
 
-| Strategy | CAGR after costs | vs buy-and-hold | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| buy_hold_index | +12.1% | +0.0% | -33.7% | 22.6% | 0.62 | 13% | 0.01% |
-| momentum_12_1 | +32.3% | +20.2% | -35.6% | 31.6% | 1.04 | 279% | 0.34% |
-| trend_sma200 | +6.2% | -5.9% | -27.8% | 13.4% | 0.51 | 263% | 0.30% |
-| low_vol_252 | +13.1% | +1.0% | -24.0% | 19.5% | 0.73 | 94% | 0.11% |
+| Strategy | CAGR after costs | vs buy-and-hold | vs equal-weight | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| buy_hold_index | +12.1% | +0.0% | -9.2% | -33.7% | 22.6% | 0.62 | 13% | 0.01% |
+| momentum_12_1 | +32.3% | +20.2% | +11.0% | -35.6% | 31.6% | 1.04 | 279% | 0.34% |
+| trend_sma200 | +6.2% | -5.9% | -15.1% | -27.8% | 13.4% | 0.51 | 263% | 0.30% |
+| low_vol_252 | +13.1% | +1.0% | -8.2% | -24.0% | 19.5% | 0.73 | 94% | 0.11% |
+| equal_weight_universe | +21.3% | +9.2% | +0.0% | -31.9% | 24.7% | 0.90 | 47% | 0.05% |
+
+**How to read this:** the universe is today's winners, so beating buy-and-hold SPY proves little. A stock-picking idea has to beat `equal_weight_universe` (simply owning all the same stocks) to show real skill.
 
 ## Settings
 
@@ -30,3 +34,4 @@ Costs: 1 bp fee + 5 bp slippage per side. Signals at the close, fills at the nex
 - `momentum_12_1`: {'top_n': 5, 'lookback_days': 252, 'skip_days': 21}
 - `trend_sma200`: {'sma_days': 200, 'off_asset': 'short_bond'}
 - `low_vol_252`: {'top_n': 5, 'lookback_days': 252}
+- `equal_weight_universe`: {'universe': 'all stocks', 'weighting': 'equal, capped at the per-stock limit'}

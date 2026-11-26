@@ -1,0 +1,11 @@
+[Unit]
+Description=Pull the newest approved release (live-v* tag); switch only if tests pass
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=/bin/bash @REPO@/deploy/update_pi.sh
+TimeoutStartSec=30min

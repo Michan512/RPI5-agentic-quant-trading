@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly trading report (sent via Telegram)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m live.report --send
+TimeoutStartSec=10min

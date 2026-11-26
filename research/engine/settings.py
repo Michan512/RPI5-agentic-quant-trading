@@ -8,7 +8,7 @@ owner first, and note the change in the trial log.
 INITIAL_CASH = 5_000.0          # proposal's planned account size (USD)
 
 # Costs, charged on every trade's notional value, on each side (buy and sell).
-# The proposal does not give numbers; these are assumptions to confirm:
+# The proposal gives no numbers; these values were confirmed by the owner on 2026-11-25:
 #   - Alpaca charges no commission on US stocks, but SEC/FINRA fees exist -> 1 bp.
 #   - Market orders at the open on liquid large caps -> 5 bp slippage.
 FEE_BPS = 1.0

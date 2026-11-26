@@ -70,7 +70,7 @@ Price data is downloaded locally and is not included in this repository.
 
 ## Tech
 
-Python, XGBoost, Qlib (research platform, being evaluated), alpaca-py (paper trading), SQLite, Raspberry Pi 5.
+Python, pandas/numpy, XGBoost, Qlib, alpaca-py (paper trading), SQLite, Raspberry Pi 5. See [TECH_STACK.md](TECH_STACK.md) for what each piece does, the key design decisions and results.
 
 ## Built with AI assistance
 

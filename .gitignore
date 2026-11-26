@@ -60,3 +60,6 @@ legacy/data/
 # --- Versioned model files (metadata is committed, binaries are not) ---
 research/trials/models/**/model.json
 research/data/cache/
+
+# --- Live runtime state (ledger, fake broker, kill switch, heartbeat) ---
+live/state/

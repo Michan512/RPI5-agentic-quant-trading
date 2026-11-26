@@ -4,7 +4,7 @@ The source of truth is `Pi 5 LLM Trading System — Proposal.pdf`. The current t
 
 ## Current stage
 
-Stage E, research side complete (Steps 1–7 done, 2026-11-25). Still to do in Stage E: the live side on the Pi (engine, risk layer, broker, ledger, watchdog), which `claude_code_prompt.md` puts out of scope for now.
+Stage E: research side complete (Steps 1–7). Live side built and tested offline on the laptop with a fake broker, plus the Pi deploy kit in `deploy/` (2026-11-26): reconcile, Telegram alerts, healthchecks.io heartbeat, weekly report, systemd timers, a one-way update via `live-v*` tags. Still needs the Pi itself: follow `deploy/README.md`, then 4 weeks of unattended paper trading.
 
 ## Layout
 
@@ -16,7 +16,14 @@ research/        # PC only: never holds broker keys
   trials/        # trials.jsonl (trial log), benchmarks.md, model_registry.py (versioned models)
   gates/         # promotion checks (empty); the ONLY code allowed to load holdout data
   run_benchmarks.py, run_xgb_candidate.py
-live/            # Raspberry Pi only: never runs LLMs (only broker/alpaca_client.py so far, not yet reworked)
+live/            # Raspberry Pi only: never runs LLMs
+  engine/        # daily.py (the daily run), calendar.py (NYSE days), data.py (providers + freshness check)
+  risk/          # limits.py (turnover cap, loss halts, hard stop), layer.py (guards + order planning)
+  broker/        # base.py (interface), fake.py (simulator), alpaca_adapter.py (paper only, Pi only)
+  ledger/        # db.py: SQLite runs/targets/orders/equity/cash_flows/events
+  approved.json  # approved strategies + allocations; kill.py = manual controls; state/ (gitignored)
+  reconcile.py, notify.py, report.py, check_broker.py   # ledger-vs-broker, alerts+heartbeat, weekly report, Pi connection test
+deploy/          # Pi checklist (README.md), requirements-pi.txt, install_pi.sh, update_pi.sh, systemd/ timers
 shared/          # strategy.py (interface, PriceView, validate_weights), universe.py, limits.py
 legacy/          # retired XGBoost day-trader (see legacy/README.md)
 tests/           # unittest (pytest isn't installed)
@@ -29,6 +36,10 @@ python -m research.data.fetcher          # update prices (incremental; re-downlo
 python -m research.data.checks           # data quality report (visible data only)
 python -m research.run_benchmarks        # Step 6 report -> research/trials/benchmarks.md
 python -m research.run_xgb_candidate     # Step 7: evaluate, append a trial, save a candidate model version
+python -m live.engine.daily --broker fake --dry-run   # laptop: plan today's orders, change nothing
+python -m live.engine.daily --broker fake             # laptop: simulated account in live/state/
+python -m live.kill [--clear|--resume|--status] [--fake]
+python -m live.report --fake                          # weekly report from the simulated account
 python -m unittest discover -s tests -t .
 ```
 
@@ -51,8 +62,9 @@ Qlib 0.9.7 runs in WSL2 Ubuntu 24.04: venv `~/qlib-check/.venv`, source `~/qlib-
 
 ## Open items
 
-- Assumptions for the owner to confirm: costs of 1 bp fee + 5 bp slippage per side; broad ETFs exempt from the 25% per-stock cap.
 - `requirements.txt` is out of date (lists torch, missing xgboost).
-- `live/broker/alpaca_client.py` still imports the old root `config.py`; it gets reworked with the live side.
+- Drawdown pause set to 15% (the proposal says 15–20%), flagged for the owner.
+- The 30% turnover cap means going from all cash to fully invested takes 2 days, and trend's 100% switches take about 4.
+- Never use real broker keys on the laptop (owner decision): the fake broker only, with Alpaca tested on the Pi.
 - Trial #1 (xgb_candidate, 2026-11-25): beats SPY but not an equal-weight hold of the same 19 stocks (research 26.0% vs 24.8%, validation 20.1% vs 21.3%; lower Sharpe; ~2,700% turnover/yr, ~3.2%/yr cost drag). Its edge over SPY is the hindsight universe, not skill. Consider adding equal-weight-universe as a benchmark (needs owner OK).
 - Trend benchmark flips 100% between SPY and SHY, which will clash with the proposal's 30%-per-rebalance turnover cap in the live risk layer.

@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily paper-trading run (after the US close)
+Wants=network-online.target
+After=network-online.target time-sync.target
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m live.engine.daily --broker alpaca
+TimeoutStartSec=20min
+Nice=5

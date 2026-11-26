@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the trading engine at 16:45 New York time on weekdays
+
+[Timer]
+# The engine itself skips market holidays and refuses to send orders during market hours.
+OnCalendar=Mon..Fri *-*-* 16:45:00 America/New_York
+# If the Pi was off at 16:45, run once when it comes back.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+# Raspberry Pi (live side) dependencies. Minimum versions = what the laptop tests ran with.
+# xgboost is not needed unless an XGBoost strategy is ever approved.
+pandas>=2.3
+numpy>=2.2
+yfinance>=0.2.66
+alpaca-py>=0.43
+python-dotenv>=1.0
+requests>=2.31

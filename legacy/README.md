@@ -21,4 +21,4 @@ The original XGBoost day-trader, retired during Stage E Step 3 (2026-11-24). Kep
 Moved out of the old project instead of retired:
 
 - `data/fetcher.py` → `research/data/fetcher.py` (reused with changes in Step 4)
-- `execution/alpaca_client.py` → `live/broker/alpaca_client.py` (the paper client is reused when the live side is built; its buy/sell logic will be replaced)
+- `execution/alpaca_client.py` → `live/broker/alpaca_client.py`, then retired to `legacy/execution/alpaca_client.py` on 2026-11-25. Its buy-at-open / sell-everything-at-close logic doesn't fit the target-weights design; it was replaced by `live/broker/alpaca_adapter.py`.

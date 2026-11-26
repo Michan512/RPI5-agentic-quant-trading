@@ -22,6 +22,7 @@ from shared.universe import SURVIVORSHIP_NOTE
 
 OUT_DIR = Path(__file__).resolve().parent / "trials"
 BASELINE = "buy_hold_index"
+EQUAL_WEIGHT = "equal_weight_universe"
 
 
 def run_all(panel=None) -> dict:
@@ -36,6 +37,7 @@ def run_all(panel=None) -> dict:
         for period in PERIODS:
             m, b = results[name]["periods"][period], results[BASELINE]["periods"][period]
             m["excess_cagr_vs_buy_hold"] = m["cagr"] - b["cagr"]
+            m["excess_cagr_vs_equal_weight"] = m["cagr"] - results[EQUAL_WEIGHT]["periods"][period]["cagr"]
     return results
 
 
@@ -57,17 +59,22 @@ def to_markdown(results: dict) -> str:
         lines += [
             f"## {period.capitalize()} ({start.date()} to {end.date()})",
             "",
-            "| Strategy | CAGR after costs | vs buy-and-hold | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| Strategy | CAGR after costs | vs buy-and-hold | vs equal-weight | Max drawdown | Volatility | Sharpe (rf=0) | Turnover/yr (one-way) | Cost drag/yr |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
         for name, r in results.items():
             m = r["periods"][period]
             lines.append(
-                f"| {name} | {pct(m['cagr'])} | {pct(m['excess_cagr_vs_buy_hold'])} | "
+                f"| {name} | {pct(m['cagr'])} | {pct(m['excess_cagr_vs_buy_hold'])} | {pct(m['excess_cagr_vs_equal_weight'])} | "
                 f"{m['max_drawdown']:.1%} | {m['ann_vol']:.1%} | {m['sharpe_rf0']:.2f} | "
                 f"{m['turnover_one_way_per_year']:.0%} | {m['cost_drag_per_year']:.2%} |")
         lines.append("")
-    lines += ["## Settings", ""]
+    lines += [
+        "**How to read this:** the universe is today's winners, so beating buy-and-hold SPY proves "
+        "little. A stock-picking idea has to beat `equal_weight_universe` (simply owning all the same "
+        "stocks) to show real skill.",
+        "",
+        "## Settings", ""]
     for name, r in results.items():
         lines.append(f"- `{name}`: {r['params']}")
     return "\n".join(lines) + "\n"
