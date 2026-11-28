@@ -9,8 +9,8 @@ Once a week (the last trading day of the week, after a completed daily run):
      paper record on this Pi (shadow books), excluding what's trading now.
      Benchmarks are never promoted.
   2. Each is judged by gate 3 (live/gate3.py). Replacing a strategy that was itself
-     promoted needs 3 months and beating it; anything else counts as a first go-live
-     (6 months, beat buy-and-hold and 5%).
+     promoted needs 6 weeks and beating it; anything else counts as a first go-live
+     (3 months, beat buy-and-hold and 5%). Periods in live/gate3_thresholds.py.
   3. The best passing candidate is written to the ledger as the promotion entry
         {"strategy", "allocation": 1.0, "live_since": next trading day, "previous": current}
      and the engine trades it instead of approved.json's list. live/golive.py then does

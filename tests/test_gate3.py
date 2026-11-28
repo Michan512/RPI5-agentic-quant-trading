@@ -111,8 +111,8 @@ class Gate3(unittest.TestCase):
         r = self.report("sixty_forty", end="2021-03-31")
         self.assertEqual(r.verdict, "not_yet")
 
-    def test_replacement_needs_three_months_and_must_beat_live(self):
-        r = self.report("trend_sma200", replacing="sixty_forty", end="2021-02-26")
+    def test_replacement_needs_six_weeks_and_must_beat_live(self):
+        r = self.report("trend_sma200", replacing="sixty_forty", end="2021-02-05")
         self.assertEqual(r.verdict, "not_yet")
         self.assertIn("beats_live_strategy", {c.name for c in r.checks})
 

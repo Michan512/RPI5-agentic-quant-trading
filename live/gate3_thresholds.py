@@ -6,10 +6,13 @@ agent can change").
 Confirmed by the owner on 2026-11-26.
 """
 
-# Proposal: "First strategy ever to go live: at least 6 months of paper trading."
-MIN_MONTHS_FIRST_GO_LIVE = 6
-# Proposal: "Replacing an existing live strategy: at least 3 months on paper."
-MIN_MONTHS_REPLACE = 3
+# Proposal said 6 months (first go-live) and 3 months (replacement). Owner shortened
+# both on 2026-11-29. Written reason: the paper period mainly proves the Pi trades what
+# the backtest says (target match + return gap), which shows up within a few rebalances.
+# Its "beat SPY" test is close to noise over 3 or 6 months alike, and the half-size start
+# and drift rollback (live/golive.py) still guard the first months live.
+MIN_MONTHS_FIRST_GO_LIVE = 3
+MIN_MONTHS_REPLACE = 1.4              # 6 weeks (months are measured as days / 30.44)
 
 # "Beats its benchmarks after costs over the period": annualised forward return must
 # beat buy-and-hold of the broad index AND the bank rate (owner choice).

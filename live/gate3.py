@@ -9,7 +9,7 @@ For one strategy (a shadow book or the traded one), using what the Pi recorded:
   3. beats buy-and-hold over the same days, after costs (annualised)
   4. beats the bank rate
   5. beats the live strategy (only when replacing one)
-  6. long enough      6 months for a first go-live, 3 for a replacement
+  6. long enough      3 months for a first go-live, 6 weeks for a replacement
 
 Verdict: "fail" if 1 or 2 fails (investigate: a bug or overfitting); otherwise
 "not_yet" until the period is long enough; then "pass" only if 3-5 all pass.

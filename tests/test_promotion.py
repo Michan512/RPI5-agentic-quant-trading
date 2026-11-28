@@ -50,15 +50,15 @@ class Promotion(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.e, cls.b, cls.l = make()
-        cls.eq, cls.res = replay(cls.e, cls.b, START, "2021-07-30")     # promoted 9 Jul, half size until 9 Aug
+        cls.eq, cls.res = replay(cls.e, cls.b, START, "2021-04-30")     # promoted 9 Apr (3-month gate 3), half size until ~10 May
 
-    def test_promoted_after_six_months_of_paper_record(self):
+    def test_promoted_after_three_months_of_paper_record(self):
         p = self.l.get_value("promotion")
         self.assertIsNotNone(p)
         self.assertEqual(p["strategy"], "strong_candidate")
         self.assertEqual(p["previous"], "buy_hold_index")
         promoted_on = pd.Timestamp(p["promoted_on"])
-        self.assertGreaterEqual((promoted_on - pd.Timestamp(START)).days / 30.44, 6.0)
+        self.assertGreaterEqual((promoted_on - pd.Timestamp(START)).days / 30.44, 3.0)
         self.assertEqual(promoted_on.dayofweek, 4)                     # a Friday: last trading day of the week
         self.assertIn("promotion", kinds(self.l))
         crit = [ev for ev in self.l.events() if ev["kind"] == "promotion"]
@@ -94,18 +94,18 @@ class PromotionGuards(unittest.TestCase):
 
     def test_no_promotion_while_paused(self):
         e, b, l = make()
-        replay(e, b, START, "2021-06-30")
+        replay(e, b, START, "2021-03-31")
         l.set_flag("paused", True)
-        replay(e, b, "2021-07-01", "2021-08-31")
+        replay(e, b, "2021-04-01", "2021-05-31")
         self.assertIsNone(l.get_value("promotion"))
 
     def test_drift_after_promotion_rolls_back_to_previous(self):
         e, b, l = make()
-        replay(e, b, START, "2021-07-21")
+        replay(e, b, START, "2021-04-21")
         self.assertIsNotNone(l.get_value("promotion"))
         sym = max(b.holdings, key=lambda t: b.holdings[t] * b.marks[t])
         b.holdings[sym] -= 0.05 * b.account().equity / b.marks[sym]     # shares vanish on a settled day
-        _, res = replay(e, b, "2021-07-22", "2021-08-20")
+        _, res = replay(e, b, "2021-04-22", "2021-05-20")
         self.assertIn("rollback", kinds(l))
         self.assertEqual(len([k for k in kinds(l) if k == "promotion"]), 1)   # not re-promoted after rollback
         self.assertIn("buy_hold_index", l.targets_on(str(max(res).date())))

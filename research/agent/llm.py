@@ -143,7 +143,7 @@ class OpenAICompatibleClient(_Base):
 
         r = requests.post(f"{self.spec.base_url.rstrip('/')}/chat/completions", timeout=600,
                           headers={"Authorization": f"Bearer {os.environ[self.spec.key_env]}"},
-                          json={"model": self.spec.model, "max_tokens": max_tokens,
+                          json={"model": self.spec.model, self.spec.token_param: max_tokens,
                                 "messages": [{"role": "system", "content": system},
                                              {"role": "user", "content": user}]})
         r.raise_for_status()

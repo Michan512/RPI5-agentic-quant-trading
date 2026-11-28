@@ -12,7 +12,7 @@ Promotion pipeline for agent submissions (proposal, "Promotion gates"; automatic
   promote  the code is filed as research/strategies/agent/<name>.py, registered, and
            added to live/shadow.json. That starts its gate 3 paper period on the Pi
            once the owner commits and tags a live-v* release (the Pi only pulls).
-           Going live later still needs gate 3 (6 months of paper record).
+           Going live later still needs gate 3 (3 months of paper record).
 
 The agent never sees anything from this module: no gate results, no review text.
 Outcomes go to research/agent/state/pipeline.jsonl and, for promotions and pauses,
