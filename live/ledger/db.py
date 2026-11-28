@@ -7,7 +7,7 @@ Tables
   orders      every order planned/submitted; PRIMARY KEY client_order_id
   equity      account value after each run
   cash_flows  deposits (+) and withdrawals (-), for the hard-stop maths
-  state       key/value flags: disabled, paused
+  state       key/value: flags (disabled, paused, rollbacks) and the auto-promotion entry
   events      halts, alerts and errors
 """
 
@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS orders (
     broker_order_id TEXT, updated_utc TEXT,
     broker_status TEXT,                 -- filled | rejected | expired | ... (from reconcile)
     filled_qty REAL, filled_price REAL
+);
+CREATE TABLE IF NOT EXISTS shadow_targets (   -- paper-comparison books: recorded, never traded
+    run_date TEXT, strategy TEXT, ticker TEXT, weight REAL,
+    PRIMARY KEY (run_date, strategy, ticker)
 );
 CREATE TABLE IF NOT EXISTS equity (run_date TEXT PRIMARY KEY, equity REAL, cash REAL);
 CREATE TABLE IF NOT EXISTS cash_flows (flow_date TEXT, amount REAL, kind TEXT);
@@ -186,6 +190,41 @@ class Ledger:
                 out[s][t] = w
         return out
 
+    # ---- shadow books (gate 3 paper comparisons; never traded) -----------------
+    def save_shadow_targets(self, run_date: str, targets: dict[str, dict[str, float]]) -> None:
+        with self.db:
+            for strategy, weights in targets.items():
+                self.db.execute("DELETE FROM shadow_targets WHERE run_date=? AND strategy=?", (run_date, strategy))
+                self.db.executemany(
+                    "INSERT INTO shadow_targets VALUES (?,?,?,?)",
+                    [(run_date, strategy, t, float(w)) for t, w in weights.items()] or
+                    [(run_date, strategy, "__CASH__", 0.0)])
+
+    def latest_shadow_targets(self, strategy: str, before: str | None = None) -> dict[str, float] | None:
+        q, args = "SELECT MAX(run_date) FROM shadow_targets WHERE strategy=?", [strategy]
+        if before:
+            q += " AND run_date < ?"
+            args.append(before)
+        d = self.db.execute(q, args).fetchone()[0]
+        if d is None:
+            return None
+        rows = self.db.execute("SELECT ticker, weight FROM shadow_targets WHERE run_date=? AND strategy=?",
+                               (d, strategy))
+        return {t: w for t, w in rows if t != "__CASH__"}
+
+    def recorded_targets(self, strategy: str) -> dict[str, dict[str, float]]:
+        """Every recorded day's target for a strategy, traded (targets) or shadow, by run date."""
+        out: dict[str, dict[str, float]] = {}
+        for table in ("shadow_targets", "targets"):          # traded records win on the same day
+            days: dict[str, dict[str, float]] = {}
+            for d, t, w in self.db.execute(f"SELECT run_date, ticker, weight FROM {table} WHERE strategy=?",
+                                           (strategy,)):
+                days.setdefault(d, {})
+                if t != "__CASH__":
+                    days[d][t] = w
+            out.update(days)
+        return dict(sorted(out.items()))
+
     # ---- equity, cash flows, state, events -----------------------------------
     def record_equity(self, run_date: str, equity: float, cash: float) -> None:
         with self.db:
@@ -198,6 +237,9 @@ class Ledger:
         with self.db:
             self.db.execute("INSERT INTO cash_flows VALUES (?,?,?)", (flow_date, amount, kind))
 
+    def cash_flows(self) -> list[tuple[str, float]]:
+        return [(r[0], r[1]) for r in self.db.execute("SELECT flow_date, amount FROM cash_flows ORDER BY flow_date")]
+
     def net_deposits(self) -> float:
         """Deposits minus withdrawals."""
         return float(self.db.execute("SELECT COALESCE(SUM(amount), 0) FROM cash_flows").fetchone()[0])
@@ -209,6 +251,23 @@ class Ledger:
     def set_flag(self, key: str, value: bool) -> None:
         with self.db:
             self.db.execute("INSERT OR REPLACE INTO state VALUES (?,?)", (key, json.dumps(bool(value))))
+
+    def true_flags(self, prefix: str) -> list[str]:
+        """Keys of flags set to true that start with prefix."""
+        return [k for k, v in self.db.execute("SELECT key, value FROM state WHERE key LIKE ?", (prefix + "%",))
+                if json.loads(v) is True]
+
+    def get_value(self, key: str):
+        """A JSON value from the state table (None if unset)."""
+        r = self.db.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
+        return json.loads(r[0]) if r else None
+
+    def set_value(self, key: str, value) -> None:
+        with self.db:
+            if value is None:
+                self.db.execute("DELETE FROM state WHERE key=?", (key,))
+            else:
+                self.db.execute("INSERT OR REPLACE INTO state VALUES (?,?)", (key, json.dumps(value)))
 
     def log_event(self, run_date: str, level: str, kind: str, message: str) -> None:
         with self.db:

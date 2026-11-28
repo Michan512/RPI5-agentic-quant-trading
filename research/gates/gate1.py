@@ -3,7 +3,8 @@ Promotion gate 1: fixed checks. The ONLY code allowed to read the holdout.
 
 A strategy passes only if every check passes (proposal, "Gate 1 checks"):
   1. rules only        no tradable ticker names written in the strategy's code
-  2. look-ahead        changing future prices doesn't change today's weights
+  2. look-ahead        prices only via the PriceView (static scan: no files, globals, private
+                       fields), and changing future prices doesn't change today's weights
   3. beats buy-and-hold on the holdout, after costs
   4. beats the bank rate (5%/yr)
   5. stock pickers also beat equal-weight of all universe stocks
@@ -39,6 +40,7 @@ from research.data import splits
 from research.data.loader import load_panel
 from research.engine.backtest import run_backtest
 from research.engine.lookahead import check_no_lookahead
+from research.gates.data_access import data_access_violations
 from research.gates import thresholds as T
 from research.gates.dsr import deflated_sharpe
 from research.strategies.buy_hold import BuyHold
@@ -132,7 +134,9 @@ def run_gate1(strategy_cls, *, panel=None, holdout_start=None, end=None,
     checks.append(Check("rules_only_no_ticker_names", not lit, lit, "none",
                         "strategies must be rules over the universe, never named tickers"))
 
-    # 2. look-ahead
+    # 2. look-ahead: prices only via the PriceView (static), and scrambled future = same output
+    access = data_access_violations(strategy_cls)
+    checks.append(Check("data_only_via_priceview", not access, len(access), 0, "; ".join(access)[:500]))
     fails = check_no_lookahead(strategy_cls, panel, [d for d in lookahead_dates if pd.Timestamp(d) < hs])
     checks.append(Check("look_ahead_test", not fails, len(fails), 0, "; ".join(fails)[:500]))
 

@@ -2,13 +2,19 @@
 
 The source of truth is `Pi 5 LLM Trading System — Proposal.pdf`. The current task and its step list are in `claude_code_prompt.md`.
 
+**At the start of every session, read `PROGRESS.md`** (where we are, next step, history). At the end of every session, update it.
+
 ## Current stage
 
 Stage E: research side complete (Steps 1–7). Live side built and tested offline on the laptop with a fake broker, plus the Pi deploy kit in `deploy/` (2026-11-26): reconcile, Telegram alerts, healthchecks.io heartbeat, weekly report, systemd timers, a one-way update via `live-v*` tags. Still needs the Pi itself: follow `deploy/README.md`, then 4 weeks of unattended paper trading.
 
 Stage D started (2026-11-26): promotion gate 1 is built (`research/gates/`) and tested on synthetic data only. **The real holdout has not been opened yet**, and no strategy has taken gate 1. Mistakes log: `research/MISTAKES.md`.
 
-ETF round 1 (2026-11-26): universe extended with 9 asset-class + 9 sector ETFs (sector ETFs capped at 25%); a 60/40 benchmark added; trials 2–5 (asset trend, dual momentum, sector momentum, combo) logged. **None met the pre-set rule** (beat 60/40 and 5%/yr with a fall no deeper than SPY's, in both periods). They cut worst falls a lot (−14% to −23% vs SPY's −55%) but earned less than 60/40. Report: `research/trials/etf_round1.md`. Don't tune these rules to pass; that's overfitting. Total trials: 5.
+ETF round 1 (2026-11-26): universe extended with 9 asset-class + 9 sector ETFs (sector ETFs capped at 25%); a 60/40 benchmark added; trials 2–5 (asset trend, dual momentum, sector momentum, combo) logged. **None met the pre-set rule** (beat 60/40 and 5%/yr with a fall no deeper than SPY's, in both periods). They cut worst falls a lot (−14% to −23% vs SPY's −55%) but earned less than 60/40. Report: `research/trials/etf_round1.md`. Don't tune these rules to pass; that's overfitting.
+
+ETF round 2 (2026-11-26, trials 6–10): inverse-vol, trend-filtered 60/40, vol-target SPY, sector momentum with a buffer, sector low-vol. Same rule plus turnover ≤300%. **vol_target_15 and sector_low_vol qualified**, but neither beat SPY in validation (8.8%/8.7% vs 12.1%). Report: `research/trials/etf_round2.md`. Total trials: 10, so Stage D's exit checkpoint is met.
+
+Stage B started (2026-11-28, owner decisions: build it fully; custom loop borrowing RD-Agent's design). The LLM researcher writes strategies; it never trades. Code passes static checks, runs only in a Docker sandbox (no network, read-only, no keys, resource caps), is logged as a trial, and if it clears the fixed screen it goes to gate 1 (in the sandbox, on the holdout, once per version) and then gate 2 (reviewers from other providers, with planted bad strategies every round). Passing strategies are filed in `research/strategies/agent/` and added to `live/shadow.json` for the gate 3 paper period. **Not run against a real model yet:** needs `pip install anthropic` and API keys on the research machine.
 
 ## Layout
 
@@ -18,7 +24,12 @@ research/        # PC only: never holds broker keys
   engine/        # settings.py (fees, slippage), backtest.py, metrics.py, lookahead.py
   strategies/    # one file per strategy; BENCHMARKS in __init__.py; xgb_candidate.py (Stage D candidate)
   trials/        # trials.jsonl (trial log), benchmarks.md, model_registry.py (versioned models)
-  gates/         # gate1.py (fixed checks; the ONLY code allowed to load holdout data), thresholds.py (owner-set), dsr.py (deflated Sharpe); gate_log.jsonl records every attempt
+  gates/         # gate1.py (fixed checks; data_access.py = static 'prices only via PriceView' scan; the ONLY code allowed to load holdout data), thresholds.py (owner-set), dsr.py (deflated Sharpe); gate_log.jsonl records every attempt
+  agent/         # drill.py = stage B checkpoint (planted strategies through every layer; 3 clean rounds before promotion)
+                 # Stage B: session.py (loop), checks.py (static allowlist), sandbox.py + sandbox_runner.py + sandbox/Dockerfile,
+                 # knowledge.py (brief + trial history), rules.py (pre-gate screen), llm.py (clients + USD caps), config.py,
+                 # reviewers.py (gate 2), planted.py, pipeline.py (gate 1 -> gate 2 -> paper); state/ + jobs/ + sandbox_data/ gitignored
+  strategies/agent/  # agent strategies that passed gates 1+2 (registry.json); shadow-traded for gate 3
   run_benchmarks.py, run_xgb_candidate.py
 live/            # Raspberry Pi only: never runs LLMs
   engine/        # daily.py (the daily run), calendar.py (NYSE days), data.py (providers + freshness check)
@@ -26,6 +37,11 @@ live/            # Raspberry Pi only: never runs LLMs
   broker/        # base.py (interface), fake.py (simulator), alpaca_adapter.py (paper only, Pi only)
   ledger/        # db.py: SQLite runs/targets/orders/equity/cash_flows/events
   approved.json  # approved strategies + allocations; kill.py = manual controls; state/ (gitignored)
+  shadow.json    # paper-comparison books: computed + recorded daily (ledger table shadow_targets), never traded
+  gate3.py       # gate 3 paper-period judge; gate3_thresholds.py (owner-set 2026-11-26)
+  golive.py      # half-size start (4 weeks) + drift rollback/pause (3 months) for entries with live_since
+  promotion.py   # weekly automatic promotion: a gate-1+2 strategy whose paper record passes gate 3 replaces the live one
+                 # (ledger overlay on approved.json; a new approved.json release always wins); eligible.json = owner-listed extras
   reconcile.py, notify.py, report.py, check_broker.py   # ledger-vs-broker, alerts+heartbeat, weekly report, Pi connection test
 deploy/          # Pi checklist (README.md), requirements-pi.txt, install_pi.sh, update_pi.sh, systemd/ timers
 shared/          # strategy.py (interface, PriceView, validate_weights), universe.py, limits.py
@@ -41,11 +57,20 @@ python -m research.data.checks           # data quality report (visible data onl
 python -m research.run_benchmarks        # Step 6 report -> research/trials/benchmarks.md
 python -m research.run_xgb_candidate     # Step 7: evaluate, append a trial, save a candidate model version
 python -m research.run_etf_round1        # ETF round 1: T1–T4 vs SPY and 60/40, logs trials (skips duplicates)
+python -m research.run_etf_round2        # ETF round 2: trials 6–10, same rule + turnover limit
 python -m research.gates.gate1 <name>    # explains; add --confirm to spend that version's ONE holdout attempt (ask the owner first)
 python -m live.engine.daily --broker fake --dry-run   # laptop: plan today's orders, change nothing
 python -m live.engine.daily --broker fake             # laptop: simulated account in live/state/
 python -m live.kill [--clear|--resume|--status] [--fake]
 python -m live.report --fake                          # weekly report from the simulated account
+python -m live.gate3 <strategy> [--replacing <live>] [--fake]   # gate 3 verdict from the recorded paper record
+python -m research.agent.sandbox build              # once: build the sandbox image in WSL Docker (needs network)
+python -m research.agent.sandbox check              # run a known strategy through the sandbox
+python -m research.agent.session --ideas 5 --budget-usd 3 [--no-submit]   # Stage B session (needs ANTHROPIC_API_KEY + pip install anthropic)
+python -m research.agent.drill                     # one checkpoint round; counts only with >= 2 reviewers configured
+python -m research.agent.pipeline --resume-pending # continue gate-1 passes once the drill checkpoint is met
+powershell -ExecutionPolicy Bypass -File deploy\windows\schedule_research.ps1   # owner: schedule sessions (default quarterly)
+python -m live.kill --clear-promotion [--fake]    # undo an automatic promotion
 python -m unittest discover -s tests -t .
 ```
 
@@ -62,6 +87,8 @@ python -m unittest discover -s tests -t .
 - New model versions are candidates only; `load_approved()` requires a manual `approve()`.
 - Every result must carry the survivorship-bias note (`shared.universe.SURVIVORSHIP_NOTE`).
 - Stop after each step and wait for the user's go-ahead.
+- Stage B: agent code never runs outside the sandbox on the PC; only strategies that passed gates 1 and 2 are imported (from research/strategies/agent/). Never weaken research/agent/checks.py, sandbox limits, the screen or reviewer rules to let an idea through. Clear research/agent/state/PROMOTIONS_PAUSED only when the owner says so.
+- The LLM never places or chooses trades (the proposal's core rule), even though the owner wants an active "quant": it writes the rules, and the Pi runs them.
 
 ## Research environment
 
@@ -69,6 +96,9 @@ Qlib 0.9.7 runs in WSL2 Ubuntu 24.04: venv `~/qlib-check/.venv`, source `~/qlib-
 
 ## Open items
 
+- **Stage D exit checkpoint:** planted part done (2026-11-26). `tests/planted.py` holds two future-peekers and `tests/planted_overfit.py` an overfitted calendar rule; all three are rejected for the named reason. Closing the blind spot that showed up (MISTAKES #13) added gate check 11, `data_only_via_priceview` (`research/gates/data_access.py`; owner-approved). Trials: 10/10 done.
+- Gate 3 built (2026-11-26): shadow books for the benchmarks + vol_target_15 + sector_low_vol start recording on the Pi's first run. Owner thresholds: beat SPY and 5%/yr annualised; fail if the cumulative return differs from a fresh backtest by more than 2 points or the recorded weights match on fewer than 99% of rebalance days; 6 months for a first go-live, 3 for a replacement. Go-live built (2026-11-27): an approved entry with `live_since` trades at half size for 4 weeks, then scales up if no reconcile mismatch or failed order. For 3 months, drift over 3 points between account and paper (settled days only) rolls back to `previous`, or pauses if there is none. Limits are in `live/risk/limits.py`, owner-confirmed.
+- RD-Agent check done (2026-11-27): `research/RD_AGENT_CHECK.md`. Recommendation: a custom stage B loop on our own engine; owner to decide.
 - `requirements.txt` is out of date (lists torch, missing xgboost).
 - Confirmed by the owner (2026-11-26): drawdown pause at 15%; the 30% turnover cap has no cash exemption, so investing from all cash takes 2 days and trend's 100% switches take about 4.
 - Never use real broker keys on the laptop (owner decision): the fake broker only, with Alpaca tested on the Pi.

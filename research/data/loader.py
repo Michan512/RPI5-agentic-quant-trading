@@ -74,5 +74,11 @@ def load_panel(symbols=None, include_holdout: bool = False,
     return panel
 
 
+def data_version(raw_dir: Path = RAW_DIR) -> str:
+    """Changes whenever the price files change (used to refresh sandbox data snapshots)."""
+    files = sorted(raw_dir.glob("*.csv"))
+    return f"{len(files)}-{max((f.stat().st_mtime_ns for f in files), default=0)}"
+
+
 def tail_date(panel: dict[str, pd.DataFrame]) -> pd.Timestamp:
     return panel["close"].index[-1]

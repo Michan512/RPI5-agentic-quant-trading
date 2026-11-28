@@ -21,8 +21,17 @@ class RiskLimits:
     drawdown_pause: float = 0.15
     # Hard stop: equity + withdrawals - deposits <= -hard_stop_loss -> sell all, disable.
     hard_stop_loss: float = 5_000.0
-    # Newly approved strategies trade at this fraction of their allocation.
+    # Newly approved strategies trade at this fraction of their allocation ...
     half_size_factor: float = 0.5
+    # ... for this many calendar days after their live_since date (proposal: "first 4
+    # weeks at half position size, then full size if fills and the ledger match").
+    half_size_days: int = 28
+    # Automatic rollback (proposal, "Automatic replacement"; owner-confirmed 2026-11-26):
+    # for this many days after go-live, if the account's cumulative return differs from
+    # what the paper books predict by more than drift_limit, switch back to the previous
+    # strategy, or pause trading with an alert if there is none.
+    drift_window_days: int = 91
+    drift_limit: float = 0.03
     # Cash kept back when sizing buys, so overnight gaps don't cause rejected orders.
     cash_buffer: float = 0.005
     # Alpaca's minimum order value; smaller differences are skipped.

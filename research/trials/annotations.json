@@ -1,0 +1,22 @@
+{
+  "1": {"hypothesis": "Gradient-boosted trees on scale-free price features can rank the 19 stocks by next-week relative return well enough to beat holding them all.",
+        "lesson": "Beat SPY only because the universe is hindsight-picked winners; lost to an equal-weight hold of the same stocks (research 26.0% vs 24.8% roughly tied, validation 20.1% vs 21.3%), with ~2,700%/yr turnover costing ~3.2%/yr. Short-horizon ML ranking on a tiny biased universe shows no skill."},
+  "2": {"hypothesis": "Holding each asset class only above its 10-month average (Faber GTAA) avoids big bear markets while keeping most of the upside.",
+        "lesson": "It cut the worst fall to about -14% but earned only ~4.4%/yr in both periods, below 60/40 and below 5%. Diversifying into weak asset classes (commodities, EM, REITs) plus the trend exits gave away too much return."},
+  "3": {"hypothesis": "Holding the stronger of US and international stocks only when it beats T-bills (Antonacci GEM) captures equity momentum and sidesteps bear markets.",
+        "lesson": "Whipsawed badly: 4.6% research, 1.0% validation, worst fall -34% in validation. A single all-in switch on 12-month momentum reacts too late to fast crashes like 2020 and then misses the rebound."},
+  "4": {"hypothesis": "The top 3 sectors by 12-1 momentum, held only while SPY is above its 200-day average, beat the market with smaller falls.",
+        "lesson": "Close but no: beat 60/40 in research (7.8%) but not in validation (6.2%), and turnover was 389%/yr. Sector momentum has a small edge at best; costs and the 25% sector cap eat it."},
+  "5": {"hypothesis": "Averaging three different timing rules diversifies their errors and gives a smoother, better result.",
+        "lesson": "Averaging three weak rules gave a weak rule (5.7% / 4.1%). Combining only helps when the parts have real edges that aren't correlated."},
+  "6": {"hypothesis": "Weighting asset classes by inverse volatility (risk parity lite) gives a better risk-adjusted return than 60/40.",
+        "lesson": "Bond-heavy by construction, so it earned 5.6% / 3.0% and suffered in 2022 when bonds and stocks fell together. Without leverage, risk parity can't reach a 5%+ return target."},
+  "7": {"hypothesis": "Moving only the 60% stock slice of a 60/40 to short bonds below the 200-day average keeps 60/40's return and cuts its drawdowns.",
+        "lesson": "Research matched 60/40 (7.5%) with a much smaller fall (-12%), but validation collapsed to 3.1%: the 2020 V-shaped crash and 2022's whipsaws hurt trend exits, and the 40% bond slice still lost in 2022."},
+  "8": {"hypothesis": "Scaling SPY exposure down when last month's volatility is above 15% (Moreira & Muir) keeps most of the return and avoids the worst periods, because high volatility tends to persist.",
+        "lesson": "The best so far: 9.0% / 8.8%, beating 60/40 in both periods with smaller falls than SPY. But it still trailed SPY in validation (8.8% vs 12.1%) because it de-risks after shocks and misses part of the rebound. It lowers risk; it doesn't beat the index."},
+  "9": {"hypothesis": "Adding a rank buffer (keep a held sector while it ranks top 5) cuts sector momentum's turnover and cost drag enough to turn its small edge into a win.",
+        "lesson": "Turnover fell in research (184%) but not in validation (328%), and validation return fell to 5.3%. The buffer didn't fix the main problem: sector momentum's edge is too small and unstable."},
+  "10": {"hypothesis": "The 3 lowest-volatility sectors (the low-volatility anomaly applied to sector ETFs, which have no survivorship bias) beat the market risk-adjusted with low turnover.",
+         "lesson": "Solid and cheap to run (8.3% / 8.7%, about 60%/yr turnover), beating 60/40 in both periods. But the 25% cash/short-bond slice and defensive sectors left it well behind SPY in validation (8.7% vs 12.1%)."}
+}

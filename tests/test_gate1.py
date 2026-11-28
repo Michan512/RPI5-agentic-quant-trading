@@ -103,10 +103,57 @@ class Gate1(unittest.TestCase):
             self.assertEqual(rows[0]["strategy"], "stay_in_cash")
 
     def test_real_benchmarks_have_no_ticker_literals(self):
-        from research.strategies import BENCHMARKS, ETF_ROUND1
+        from research.strategies import BENCHMARKS, ETF_ROUND1, ETF_ROUND2
         from research.strategies.xgb_candidate import XGBCandidate
-        for cls in list(BENCHMARKS.values()) + list(ETF_ROUND1.values()) + [XGBCandidate]:
+        for cls in list(BENCHMARKS.values()) + list(ETF_ROUND1.values()) + list(ETF_ROUND2.values()) + [XGBCandidate]:
             self.assertEqual(gate1.ticker_literals(cls), [], cls.name)
+
+    def test_real_strategies_pass_the_data_access_check(self):
+        from research.gates.data_access import data_access_violations
+        from research.strategies import BENCHMARKS, ETF_ROUND1, ETF_ROUND2
+        from research.strategies.xgb_candidate import XGBCandidate
+        for cls in list(BENCHMARKS.values()) + list(ETF_ROUND1.values()) + list(ETF_ROUND2.values()) + [XGBCandidate]:
+            self.assertEqual(data_access_violations(cls), [], cls.name)
+
+
+class PlantedStrategies(unittest.TestCase):
+    """Stage D exit checkpoint: gate 1 must reject a future-peeker and an overfitted rule,
+    and for the right reason (the named check), not by accident."""
+
+    def test_peeker_through_priceview_back_door_is_rejected_by_lookahead(self):
+        from tests.planted import PeekerBackDoor
+        with tempfile.TemporaryDirectory() as d:
+            r = run(PeekerBackDoor, Path(d) / "log.jsonl")
+            self.assertFalse(r.passed)
+            self.assertFalse(checks(r)["look_ahead_test"].passed)
+            self.assertFalse(checks(r)["data_only_via_priceview"].passed)
+            self.assertTrue(checks(r)["rules_only_no_ticker_names"].passed)
+
+    # The scrambling test alone can't see this one (MISTAKES #13): it ignores the panel it's
+    # given. The static data_only_via_priceview check (owner decision 2026-11-26) catches it.
+    def test_peeker_with_private_data_copy_is_rejected_by_data_access_check(self):
+        from tests.planted import PeekerPrivateCopy
+        PeekerPrivateCopy.full_close = PANEL["close"]
+        with tempfile.TemporaryDirectory() as d:
+            r = run(PeekerPrivateCopy, Path(d) / "log.jsonl")
+            self.assertFalse(r.passed)
+            self.assertFalse(checks(r)["data_only_via_priceview"].passed)
+
+    def test_overfitted_calendar_rule_is_rejected_on_holdout(self):
+        from tests.planted_overfit import OverfitCalendar, fit_calendar_mask
+        close = PANEL["close"]
+        mask, sharpes = fit_calendar_mask(close[close.index < HOLDOUT], n_trials=200)
+        OverfitCalendar.months_in = tuple(int(m) + 1 for m in np.flatnonzero(mask))
+        with tempfile.TemporaryDirectory() as d:
+            r = gate1.run_gate1(OverfitCalendar, panel=PANEL, holdout_start=HOLDOUT,
+                                lookahead_dates=LOOKAHEAD, n_trials=len(sharpes),
+                                trial_sharpes=sharpes, log=Path(d) / "log.jsonl")
+            c = checks(r)
+            self.assertFalse(r.passed)
+            self.assertTrue(c["look_ahead_test"].passed)          # it's honest, just overfitted
+            self.assertTrue(c["data_only_via_priceview"].passed)
+            self.assertFalse(c["beats_buy_and_hold"].passed)
+            self.assertFalse(c["deflated_sharpe"].passed)
 
 
 class DeflatedSharpe(unittest.TestCase):

@@ -7,11 +7,18 @@ Each run, for trading day D:
                                                the broker by client_order_id and
                                                send only the missing ones
   3. Risk guards: kill switch, disabled, hard stop, drawdown pause, daily loss halt
+     + go-live checks (live/golive.py): rollback or pause if a newly live strategy's
+       results drift from its paper record; half size for its first 4 weeks
   4. Fresh data for D?                      -> otherwise no trade
   5. Strategy targets (only on each strategy's rebalance day; else keep the last)
   6. Combine by allocation, risk layer -> orders; save the plan BEFORE sending
   7. Send orders (timeouts: look the order up before retrying once)
   8. Record everything, write the heartbeat
+
+Shadow books (gate 3): strategies in live/shadow.json are computed every day on the
+same data and their targets recorded in the ledger, but never traded. They run even
+on days the account is halted or paused, so their forward record has no gaps. A
+failing shadow strategy only logs an event; it can never block or change trading.
 
 Every failure path ends in "no trade" or "the correct trade", never a duplicate.
 
@@ -36,6 +43,8 @@ from live import config
 from live.broker.base import BrokerTimeout, DuplicateOrder, OrderRejected
 from live.engine.calendar import is_trading_day, trading_days
 from live.engine.data import StaleData, check_fresh
+from live.golive import check_drift, effective_entries, sizing_changed
+from live.promotion import consider as consider_promotion, effective_approved
 from live.ledger.db import Ledger
 from live.risk.layer import guard, plan_orders, sell_everything
 from live.risk.limits import DEFAULT_LIMITS, RiskLimits
@@ -56,15 +65,25 @@ class DailyEngine:
     def __init__(self, broker, ledger: Ledger, provider, approved: list[dict],
                  registry: dict | None = None, limits: RiskLimits = DEFAULT_LIMITS,
                  kill_switch_path: Path | None = config.KILL_SWITCH,
-                 heartbeat_path: Path | None = None, cap_turnover: bool = True):
+                 heartbeat_path: Path | None = None, cap_turnover: bool = True,
+                 shadows: list[str] | None = None, shadow_registry: dict | None = None,
+                 promotion_eligible: set[str] | None = None):
         self.broker, self.ledger, self.provider = broker, ledger, provider
         self.approved, self.limits = approved, limits
         self.registry = registry or config.strategy_registry()
-        unknown = [e["strategy"] for e in approved if e["strategy"] not in self.registry]
+        unknown = [n for e in approved for n in (e["strategy"], e.get("previous")) if n and n not in self.registry]
         if unknown:
             raise ValueError(f"approved strategies not in the registry: {unknown}")
         self.kill_switch_path, self.heartbeat_path = kill_switch_path, heartbeat_path
         self.cap_turnover = cap_turnover
+        approved_names = {e["strategy"] for e in approved}
+        self.shadow_registry = shadow_registry or config.shadow_registry()
+        self.shadows = [n for n in (shadows or []) if n not in approved_names]
+        self.all_shadows = list(shadows or [])
+        self.promotion_eligible = promotion_eligible
+        unknown = [n for n in self.shadows if n not in self.shadow_registry]
+        if unknown:
+            raise ValueError(f"shadow strategies not in the shadow registry: {unknown}")
         self.cost_rate = (S.FEE_BPS + S.SLIPPAGE_BPS) / 1e4
         self._instances: dict = {}
 
@@ -81,7 +100,10 @@ class DailyEngine:
         try:
             if self.ledger.has_plan(ds):          # a previous attempt saved a plan: finish it
                 return self._send(ds, "resumed after an interrupted run")
-            return self._fresh_run(d, ds)
+            res = self._fresh_run(d, ds)
+            if res.status == "completed":
+                self._weekly_promotion(d, ds)
+            return res
         finally:
             self._heartbeat(ds)
 
@@ -96,6 +118,8 @@ class DailyEngine:
                   net_deposits=L.net_deposits(), limits=self.limits)
         L.record_equity(ds, acct.equity, acct.cash)
 
+        if g.action != "ok":
+            self._shadows_best_effort(d, ds)
         if g.action in ("kill", "disabled", "paused"):
             return self._stop(ds, "skipped", g.reason, level="warning", kind=g.action)
         if g.action == "hard_stop":
@@ -119,10 +143,17 @@ class DailyEngine:
         view = PriceView(panel, d)
         days = trading_days(d - timedelta(days=20), d + timedelta(days=20))
         i = days.get_loc(d)
+        self._record_shadows(ds, view, days, i)
+
+        approved = effective_approved(self.approved, L, ds)
+        if check_drift(approved, L, panel, self.registry, d, ds, self.limits) == "pause":
+            return self._stop(ds, "halted", "drift from paper record: trading paused", level="info",
+                              kind="drift_pause_stop")
+        entries = effective_entries(approved, L, d, ds, self.limits)
         targets, rebalanced = {}, False
         try:
-            for e in self.approved:
-                name = e["strategy"]
+            for e in entries:
+                name = e.strategy
                 strat = self._instances.setdefault(name, self.registry[name]())
                 prev = L.latest_targets(name, before=ds)
                 if prev is None or is_rebalance_day(days, i, strat.rebalance):
@@ -136,15 +167,16 @@ class DailyEngine:
 
         last = L.last_completed_run(before=ds)
         pending = bool(last and last["transition_pending"])
-        if not rebalanced and not pending:
+        resized = sizing_changed(approved, L, entries, last["run_date"] if last else None, self.limits)
+        if not rebalanced and not pending and not resized:
             L.save_plan(ds, targets, [], False)
             L.finish_run(ds, "completed", "not a rebalance day")
             return RunResult(ds, "completed", "not a rebalance day", targets)
 
         combined = pd.Series(dtype=float)
-        for e in self.approved:
-            scale = e["allocation"] * (self.limits.half_size_factor if e.get("half_size") else 1.0)
-            combined = combined.add(pd.Series(targets[e["strategy"]], dtype=float) * scale, fill_value=0.0)
+        for e in entries:
+            combined = combined.add(pd.Series(targets[e.strategy], dtype=float) * e.allocation * e.scale,
+                                    fill_value=0.0)
         prices = panel["close"].iloc[-1]
         try:
             orders, capped = plan_orders(target=combined, positions=positions, prices=prices,
@@ -159,6 +191,48 @@ class DailyEngine:
         result = self._send(ds, "rebalanced" + (" (turnover capped)" if capped else ""))
         result.targets = targets
         return result
+
+    # ------------------------------------------------------------------
+    def _record_shadows(self, ds: str, view: PriceView, days, i: int) -> None:
+        out = {}
+        for name in self.shadows:
+            try:
+                strat = self._instances.setdefault(("shadow", name), self.shadow_registry[name]())
+                prev = self.ledger.latest_shadow_targets(name, before=ds)
+                if prev is None or is_rebalance_day(days, i, strat.rebalance):
+                    out[name] = validate_weights(strat.target_weights(view)).to_dict()
+                else:
+                    out[name] = prev
+            except Exception as e:                       # never let a shadow book affect trading
+                self.ledger.log_event(ds, "warning", "shadow_failed", f"{name}: {type(e).__name__}: {e}")
+        if out:
+            self.ledger.save_shadow_targets(ds, out)
+
+    def _weekly_promotion(self, d: pd.Timestamp, ds: str) -> None:
+        """Gate 3 check for automatic promotion, on the last trading day of each week. Never affects the run."""
+        try:
+            days = trading_days(d - timedelta(days=20), d + timedelta(days=20))
+            if not is_rebalance_day(days, days.get_loc(d), "weekly"):
+                return
+            from live.promotion import eligible_names
+            eligible = self.promotion_eligible if self.promotion_eligible is not None else eligible_names()
+            if not eligible:
+                return
+            consider_promotion(self.approved, self.ledger, self.provider.panel(d), d, ds, self.limits,
+                               {**self.shadow_registry, **self.registry}, eligible, self.all_shadows)
+        except Exception as e:
+            self.ledger.log_event(ds, "warning", "promotion_check_failed", f"{type(e).__name__}: {e}")
+
+    def _shadows_best_effort(self, d: pd.Timestamp, ds: str) -> None:
+        if not self.shadows:
+            return
+        try:
+            panel = self.provider.panel(d)
+            check_fresh(panel, d)
+            days = trading_days(d - timedelta(days=20), d + timedelta(days=20))
+            self._record_shadows(ds, PriceView(panel, d), days, days.get_loc(d))
+        except Exception as e:
+            self.ledger.log_event(ds, "warning", "shadow_failed", f"shadow books not recorded: {e}")
 
     # ------------------------------------------------------------------
     def _send(self, ds: str, note: str) -> RunResult:
@@ -320,7 +394,8 @@ def main(argv=None) -> None:
         for p in problems:
             print(f"[live] RECONCILE: {p}")
         engine = DailyEngine(broker_used, ledger, provider, config.load_approved(),
-                             heartbeat_path=None if args.dry_run else config.HEARTBEAT)
+                             heartbeat_path=None if args.dry_run else config.HEARTBEAT,
+                             shadows=config.load_shadows())
         res = engine.run(run_date)
     except Exception as e:
         if not args.dry_run:

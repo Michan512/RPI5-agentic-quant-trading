@@ -41,6 +41,16 @@ def check_fresh(panel: dict[str, pd.DataFrame], run_date: pd.Timestamp) -> None:
         raise StaleData(f"no closing price on {run_date.date()} for: {missing}")
 
 
+def drop_non_trading_rows(panel: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Remove dates where no tradable symbol has a close (e.g. a US holiday that a
+    data-only series such as ^VIX still reports). Such rows put a NaN in every
+    ticker's history, so rules that skip tickers with gaps silently went to cash."""
+    close = panel["close"]
+    cols = [s for s in TRADABLE if s in close.columns]
+    keep = close[cols].notna().any(axis=1)
+    return {f: df.loc[keep] for f, df in panel.items()}
+
+
 class PanelProvider:
     def __init__(self, panel: dict[str, pd.DataFrame]):
         self._panel = panel
@@ -67,4 +77,4 @@ class YFinanceProvider:
             df = raw[f.capitalize()].copy()
             df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
             out[f] = df.reindex(columns=self.symbols)
-        return out
+        return drop_non_trading_rows(out)

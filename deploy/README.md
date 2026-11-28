@@ -83,6 +83,10 @@ This creates `.venv`, installs `deploy/requirements-pi.txt`, downloads price his
 
 **What to trade:** `live/approved.json` lists the approved strategies and their share of the account. It starts as 100% `buy_hold_index`. Change it on the research machine, commit, then tag a new `live-v*` release; never edit it on the Pi.
 
+**Going live with a new strategy:** give its entry `"live_since": "YYYY-MM-DD"` (and `"previous": "<strategy it replaces>"` if it replaces one). It then trades at half size for 4 weeks and scales up only if there were no reconcile mismatches or failed orders. For 3 months it's checked daily against its paper record: a gap over 3 points switches back to `previous`, or pauses trading if there is none (resume with `python -m live.kill --resume`). Either way you get a critical alert. Paper comparisons: `live/shadow.json`; their verdicts: `python -m live.gate3 <strategy>`.
+
+**Automatic promotion:** once a week the Pi checks every strategy that passed gates 1 and 2 (agent strategies in `research/strategies/agent/`, plus `live/eligible.json`). If one's paper record passes gate 3, it replaces the current strategy by itself, with half size and drift rollback as above, and you get a critical alert. Undo with `python -m live.kill --clear-promotion`. A new `approved.json` release always overrides it. This only ever moves the paper account.
+
 ## 5. Go live (paper)
 
 ```bash

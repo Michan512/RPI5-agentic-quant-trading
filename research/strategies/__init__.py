@@ -23,3 +23,12 @@ from research.strategies.dual_momentum import DualMomentum  # noqa: E402
 from research.strategies.sector_momentum import SectorMomentum  # noqa: E402
 
 ETF_ROUND1 = {c.name: c for c in (AssetTrend, DualMomentum, SectorMomentum, Combo)}
+
+# ETF round 2 (trials 6-10): new ideas, judged by the round 1 rule plus turnover <= 300%/yr.
+from research.strategies.inverse_vol import InverseVol  # noqa: E402
+from research.strategies.sector_low_vol import SectorLowVol  # noqa: E402
+from research.strategies.sector_momentum_buffer import SectorMomentumBuffer  # noqa: E402
+from research.strategies.trend_sixty_forty import TrendSixtyForty  # noqa: E402
+from research.strategies.vol_target import VolTarget  # noqa: E402
+
+ETF_ROUND2 = {c.name: c for c in (InverseVol, TrendSixtyForty, VolTarget, SectorMomentumBuffer, SectorLowVol)}

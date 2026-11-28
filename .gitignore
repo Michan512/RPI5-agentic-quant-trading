@@ -63,3 +63,9 @@ research/data/cache/
 
 # --- Live runtime state (ledger, fake broker, kill switch, heartbeat) ---
 live/state/
+
+# --- Stage B research agent: runtime files (jobs, sandbox data, spend/session state) ---
+research/agent/jobs/
+research/agent/sandbox_data/
+research/agent/state/
+research/gates/sandbox_data/

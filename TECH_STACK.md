@@ -46,8 +46,9 @@ Status: Stage E's research side is complete. The live (Pi) side is built and tes
 | **yfinance** | Free daily prices (Yahoo Finance), split- and dividend-adjusted | Free, with 20 years of history | Paid feeds (Polygon, Norgate) that include delisted stocks |
 | **Own backtest engine** (`research/engine/`) | Replays history: signal at the close, fill at the next open, fees and slippage on every trade, cash only | Small and fully understood. It **must run on the Pi** so live trading matches the backtest | Qlib, Backtrader, vectorbt |
 | **Qlib** (Microsoft), in **WSL2** | Installed and verified. An export feeds it the same data | Useful for exploring factors, and for Stage B (RD-Agent builds on it) | Can't run on the Pi, so it isn't the core engine |
+| **RD-Agent** (Microsoft) | Checked, not installed (`research/RD_AGENT_CHECK.md`) | Automated factor and model research on Qlib | Its quant scenarios target China's CSI 300; US data isn't documented, and it mines factors across hundreds of stocks. Our evidence favours simple ETF rules, so a custom loop on our own engine and gates fits better |
 | **XGBoost** | The machine-learning model in the Stage D candidate | Strong on tabular data, quick on a laptop CPU | Neural nets (overkill for ~80k rows) |
-| **unittest** | 22 automated tests: look-ahead, holdout lock, engine, limits, registry | Built into Python, so no extra dependency | pytest |
+| **unittest** | 132 automated tests: look-ahead, holdout lock, engine, limits, registry | Built into Python, so no extra dependency | pytest |
 | **git** | Version control. The trial log records the code version of every test | Reproducibility | — |
 | **uv** | Fast Python environment manager (for the Qlib install) | Isolated, reproducible environments | conda, pip + venv |
 | **Alpaca (alpaca-py)** *(next)* | Paper-trading broker API | Free paper accounts, no commission, fractional shares | Interactive Brokers |
@@ -60,10 +61,11 @@ Status: Stage E's research side is complete. The live (Pi) side is built and tes
 
 ## Engineering decisions worth talking about
 
-**1. Look-ahead bias is blocked twice.**
+**1. Look-ahead bias is blocked three ways.**
 - **By design:** strategies never see the full dataset. They get a `PriceView` that physically cuts off at today's close.
 - **By test:** for every strategy, the test scrambles all prices after date T and checks that the weights for T don't change.
 - **The test is itself tested:** a deliberately cheating strategy is included to prove the test catches it.
+- **By code scan (gate 1):** planted cheaters exposed a blind spot. A strategy holding its *own copy* of the data ignores the scrambled panel, and it passed 10 of 11 gate checks with 91% a year of fake returns; only the turnover cap stopped it. Gate 1 now also scans the strategy's code and rejects any other route to data (file reads, network, globals or class attributes holding data, PriceView's private fields). A static scan can be evaded, so Stage B's sandbox stays the real fix.
 
 **2. A locked holdout period.** The last ~3 years (2024 onwards) are a final exam.
 - The data loader refuses to return those rows unless the code calling it lives in `research/gates/` (the future promotion checks).
@@ -116,11 +118,11 @@ Status: Stage E's research side is complete. The live (Pi) side is built and tes
 
 **11. Promotion gate 1 (`research/gates/`): the final exam.**
 - **The only code that may open the holdout.** Each exact strategy version (a hash of its code and settings) gets **one attempt**, and every attempt is logged, so you can't keep tweaking until it passes.
-- **Ten fixed checks:**
+- **Eleven fixed checks:**
   - beats buy-and-hold and the 5% bank rate after costs
   - stock pickers must also beat equal-weight of the same stocks
   - deflated Sharpe ratio ≥ 95%
-  - look-ahead test
+  - look-ahead test, plus a code scan for any data access outside the PriceView
   - no ticker names in the code
   - turnover ≤ 300%/yr
   - drawdown no deeper than buy-and-hold's
@@ -128,6 +130,26 @@ Status: Stage E's research side is complete. The live (Pi) side is built and tes
   - still wins with doubled costs and with shifted start dates
 - **Deflated Sharpe ratio, in one sentence:** if you try 100 ideas, the best will look good by luck. The DSR asks how likely it is that this strategy beats the *luckiest of N worthless strategies*, allowing for fat tails. More trials means a higher bar. It's written with only Python's standard library.
 - **Tested on synthetic markets,** so the real holdout stays sealed until a genuine candidate exists.
+- **Planted bad strategies are rejected for the right reason** (the Stage D exit checkpoint): two future-peekers fail the look-ahead and code-scan checks, and a rule picked as the best of 200 calendar tries fails on the holdout and on deflated Sharpe.
+
+**12. Gate 3, the paper period, and shadow books.**
+- One Alpaca paper account trades the main strategy. Every benchmark and candidate also runs daily on the Pi as a **shadow book**: its target weights are computed from the same data and recorded, but never traded. A failing shadow can't affect trading, and shadows keep recording even when trading is paused, so their record has no gaps.
+- **Gate 3** replays each recorded book with the research engine (same next-open fills and costs) and checks four things. Do the recorded weights match what the code gives today (≥99% of rebalance days)? Is the forward return within 2 points of a fresh backtest? Does it beat SPY and 5%/yr? Is the record 6 months long (3 for a replacement)? A mismatch means a bug or bad data, not bad luck.
+- **Go-live safety (`live/golive.py`):** a newly live strategy trades at half size for 4 weeks, and scales up only if every fill reconciled. For 3 months, a daily check compares the account with its paper record on settled days. A gap over 3 points switches back to the previous strategy automatically, or pauses trading if it's the first. A stress run found that counting every day caused false alarms (the 30% turnover cap phases trades in on purpose), so only days without fills count. Honest gaps then stayed under 0.75% even in the March 2020 crash.
+- **It found a bug before it was even deployed.** The live feed had US holidays as empty rows, which silently sent the low-volatility rules to cash. The backtest data was clean, so only a live-vs-backtest comparison could see it.
+
+**13. Stage B: an LLM agent as the quant researcher (`research/agent/`).**
+- **The LLM writes the rules; it never places trades.** Its strategies go through the same trial log and gates as mine, then months of paper trading, before the Pi runs them as plain code.
+- **Loop borrowed from Microsoft's RD-Agent:** hypothesis -> code -> backtest -> feedback -> knowledge. The agent reads every past trial's hypothesis, results and *lesson*, so it doesn't repeat ideas.
+- **Defence in depth against a clever or compromised agent:**
+  - A static allowlist: only pandas, numpy and the strategy interface; no files, network, reflection or monkeypatching.
+  - A locked Docker sandbox: no network, read-only, no keys, resource caps. Tests attack it from inside to prove each wall.
+  - A holdout it never sees.
+  - Gate 1 run once per exact code version.
+  - Reviewer models from *other* providers that never see the author's pitch, checked every round with planted bad strategies.
+  - Hard dollar caps per session and per month.
+- **The loop closes without a human, but never without evidence:** a strategy that passes gates 1 and 2 paper-trades on the Pi; when its paper record passes gate 3, the Pi promotes it itself at half size, with automatic rollback if live results drift. A rolled-back strategy can't be re-promoted (a bug the tests caught). Promotion waits for a checkpoint drill: planted bad strategies must be stopped by every layer for 3 rounds in a row.
+- **Why custom instead of RD-Agent itself:** RD-Agent mines factors across hundreds of Chinese stocks and judges with its own backtest. This project needs rules over 37 ETFs and stocks, judged by a fixed engine the agent can't touch.
 
 ---
 
@@ -154,6 +176,8 @@ Annual return after costs. Research = 2007–2019, validation = 2020–2023. The
 
 **ETF round 1 (published rules on bias-free ETFs):** Faber's asset-class trend, Antonacci's dual momentum, sector momentum and a combination of the three. They cut the worst fall from −55% (SPY) to −14% to −23%, but none beat a plain 60/40 portfolio on returns in both periods, so none earned a holdout attempt. The decision rule was written down *before* the results, and the rules weren't re-tuned afterwards.
 
+**ETF round 2 (10 trials in total):** inverse-volatility weighting, trend-filtered 60/40, volatility-managed SPY (Moreira & Muir), sector momentum with a holding buffer, and low-volatility sectors. Volatility-managed SPY and low-vol sectors beat 60/40 in both periods with lower drawdowns than SPY, but neither beat SPY itself in validation (about 8.8% vs 12.1%). The lesson: lowering risk is easy; beating the index after costs is not. The buffer cut sector momentum's turnover in research but not in validation (328%/yr).
+
 **The system worked as intended.** It turned an impressive-looking model into an honest "no edge", before any money was involved.
 
 ---
@@ -170,7 +194,7 @@ Annual return after costs. Research = 2007–2019, validation = 2020–2023. The
 ## Likely interview questions
 
 **How do you prevent look-ahead bias?**
-Strategies only get a data view that ends at today's close. On top of that, an automated test changes all future prices and checks that today's decision doesn't move, and it's proven to catch a cheating strategy.
+Strategies only get a data view that ends at today's close. On top of that, an automated test changes all future prices and checks that today's decision doesn't move, and it's proven to catch a cheating strategy. Planting cheaters also showed the test's limit: a strategy with its own copy of the data slips past it, so the gate also scans the code for any data access outside the view.
 
 **Why not judge the model by accuracy?**
 Accuracy doesn't pay. A model can be 55% accurate and still lose money after costs, or after trading at the open. Everything here is judged by returns after costs, against benchmarks.
